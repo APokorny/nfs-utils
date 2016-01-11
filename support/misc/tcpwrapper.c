@@ -51,6 +51,7 @@
 #include "sockaddr.h"
 #include "tcpwrapper.h"
 #include "xlog.h"
+#include "app_path.h"
 
 #ifdef SYSV40
 #include <netinet/in.h>
@@ -202,11 +203,15 @@ check_files(void)
 	static time_t allow_mtime, deny_mtime;
 	struct stat astat, dstat;
 	int changed = 0;
+	struct file_path allow = get_app_path("/etc/hosts.allow");
+	struct file_path deny = get_app_path("/etc/hosts.deny");
 
-	if (stat("/etc/hosts.allow", &astat) < 0)
+	if (stat(allow.path, &astat) < 0)
 		astat.st_mtime = 0;
-	if (stat("/etc/hosts.deny", &dstat) < 0)
+	free_app_path(&allow);
+	if (stat(deny.path, &dstat) < 0)
 		dstat.st_mtime = 0;
+	free_app_path(&deny);
 
 	if(!astat.st_mtime || !dstat.st_mtime)
 		return changed;

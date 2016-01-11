@@ -24,6 +24,7 @@
 #include "exportfs.h"
 #include "mountd.h"
 #include "v4root.h"
+#include "app_path.h"
 
 enum auth_error
 {
@@ -88,17 +89,19 @@ auth_reload()
 	static int		last_fd = -1;
 	static unsigned int	counter;
 	int			fd;
+	struct file_path	etab = get_app_path(_PATH_ETAB);
 
-	if ((fd = open(_PATH_ETAB, O_RDONLY)) < 0) {
-		xlog(L_FATAL, "couldn't open %s", _PATH_ETAB);
+	if ((fd = open(etab.path, O_RDONLY)) < 0) {
+		xlog(L_FATAL, "couldn't open %s", etab.path);
 	} else if (fstat(fd, &stb) < 0) {
-		xlog(L_FATAL, "couldn't stat %s", _PATH_ETAB);
+		xlog(L_FATAL, "couldn't stat %s", etab.path);
 		close(fd);
 	} else if (last_fd != -1 && stb.st_ino == last_inode) {
 		/* We opened the etab file before, and its inode
 		 * number hasn't changed since then.
 		 */
 		close(fd);
+		free_app_path(&etab);
 		return counter;
 	} else {
 		/* Need to process entries from the etab file.  Close
@@ -112,6 +115,7 @@ auth_reload()
 		last_fd = fd;
 		last_inode = stb.st_ino;
 	}
+	free_app_path(&etab);
 
 	export_freeall();
 	memset(&my_client, 0, sizeof(my_client));

@@ -26,6 +26,7 @@
 #include "misc.h"
 #include "mountd.h"
 #include "rpcmisc.h"
+#include "app_path.h"
 #include "pseudoflavors.h"
 
 extern void my_svc_run(void);
@@ -108,9 +109,15 @@ unregister_services (void)
 static void
 cleanup_lockfiles (void)
 {
-	unlink(_PATH_XTABLCK);
-	unlink(_PATH_ETABLCK);
-	unlink(_PATH_RMTABLCK);
+	struct file_path xtablck = get_app_path(_PATH_XTABLCK);
+	struct file_path etablck = get_app_path(_PATH_ETABLCK);
+	struct file_path rmtablck = get_app_path(_PATH_RMTABLCK);
+	unlink(xtablck.path);
+	unlink(etablck.path);
+	unlink(rmtablck.path);
+	free_app_path(xtablck);
+	free_app_path(etablck);
+	free_app_path(rmtablck);
 }
 
 /* Wait for all worker child processes to exit and reap them */
@@ -689,8 +696,10 @@ get_exportlist(void)
 int
 main(int argc, char **argv)
 {
-	char	*export_file = _PATH_EXPORTS;
-	char    *state_dir = NFS_STATEDIR;
+	struct file_path export_file_path = get_app_path(_PATH_EXPORTS);
+	struct file_path state_dir_path = get_app_path(NFS_STATEDIR);
+	char	*export_file = export_file_path.path;
+	char    *state_dir = state_dir_path.path;
 	char	*progname;
 	unsigned int listeners = 0;
 	int	foreground = 0;
@@ -800,7 +809,7 @@ main(int argc, char **argv)
 	if (chdir(state_dir)) {
 		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
 			progname, state_dir, strerror(errno));
-		exit(1);
+		goto goto_exit;
 	}
 
 	if (getrlimit (RLIMIT_NOFILE, &rlim) != 0)
@@ -816,7 +825,7 @@ main(int argc, char **argv)
 			if (setrlimit (RLIMIT_NOFILE, &rlim) != 0) {
 				fprintf(stderr, "%s: setrlimit (RLIMIT_NOFILE) failed: %s\n",
 					progname, strerror(errno));
-				exit(1);
+				goto goto_exit;
 			}
 		}
 	}
@@ -899,6 +908,9 @@ main(int argc, char **argv)
 
 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
 	unregister_services();
+goto_exit:
+	free_app_path(&export_file_path);
+	free_app_path(&state_dir_path);
 	exit(1);
 }
 

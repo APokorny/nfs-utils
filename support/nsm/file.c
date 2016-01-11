@@ -88,18 +88,30 @@
 
 #include "xlog.h"
 #include "nsm.h"
+#include "app_path.h"
 
 #define RPCARGSLEN	(4 * (8 + 1))
 #define LINELEN		(RPCARGSLEN + SM_PRIV_SIZE * 2 + 1)
 
 #define NSM_KERNEL_STATE_FILE	"/proc/sys/fs/nfs/nsm_local_state"
 
-static char nsm_base_dirname[PATH_MAX] = NSM_DEFAULT_STATEDIR;
+static struct file_path nsm_base_dirname;
 
 #define NSM_MONITOR_DIR	"sm"
 #define NSM_NOTIFY_DIR	"sm.bak"
 #define NSM_STATE_FILE	"state"
 
+__attribute__((constructor))
+static void
+create_nsm_base_dirname(void) {
+	nsm_base_dirname = get_app_path(NSM_DEFAULT_STATEDIR);
+}
+
+__attribute__((destructor))
+static void
+destroy_nsm_base_dirname(void) {
+	free_app_path(&nsm_base_dirname);
+}
 
 static _Bool
 error_check(const int len, const size_t buflen)
@@ -138,7 +150,7 @@ nsm_make_record_pathname(const char *directory, const char *hostname)
 			return NULL;
 		}
 
-	size = strlen(nsm_base_dirname) + strlen(directory) + strlen(hostname) + 3;
+	size = strlen(nsm_base_dirname.path) + strlen(directory) + strlen(hostname) + 3;
 	if (size > PATH_MAX) {
 		xlog(D_GENERAL, "Hostname results in pathname that is too long");
 		return NULL;
@@ -151,7 +163,7 @@ nsm_make_record_pathname(const char *directory, const char *hostname)
 	}
 
 	len = snprintf(path, size, "%s/%s/%s",
-			nsm_base_dirname, directory, hostname);
+			nsm_base_dirname.path, directory, hostname);
 	if (error_check(len, size)) {
 		xlog(D_GENERAL, "Pathname did not fit in specified buffer");
 		free(path);
@@ -174,7 +186,7 @@ nsm_make_pathname(const char *directory)
 	char *path;
 	int len;
 
-	size = strlen(nsm_base_dirname) + strlen(directory) + 2;
+	size = strlen(nsm_base_dirname.path) + strlen(directory) + 2;
 	if (size > PATH_MAX)
 		return NULL;
 
@@ -182,7 +194,7 @@ nsm_make_pathname(const char *directory)
 	if (path == NULL)
 		return NULL;
 
-	len = snprintf(path, size, "%s/%s", nsm_base_dirname, directory);
+	len = snprintf(path, size, "%s/%s", nsm_base_dirname.path, directory);
 	if (error_check(len, size)) {
 		free(path);
 		return NULL;
@@ -314,7 +326,9 @@ nsm_setup_pathnames(const char *progname, const char *parentdir)
 	}
 
 	xlog(D_CALL, "Using %s as the state directory", parentdir);
-	strncpy(nsm_base_dirname, parentdir, sizeof(nsm_base_dirname));
+	free_app_path(&nsm_base_dirname);
+	nsm_base_dirname.path = strdup(parentdir);
+	nsm_base_dirname.on_heap = 1;
 	return true;
 }
 
@@ -328,7 +342,10 @@ nsm_setup_pathnames(const char *progname, const char *parentdir)
 _Bool
 nsm_is_default_parentdir(void)
 {
-	return strcmp(nsm_base_dirname, NSM_DEFAULT_STATEDIR) == 0;
+	struct file_path default_statedir = get_app_path(NSM_DEFAULT_STATEDIR);
+	_Bool ret = strcmp(nsm_base_dirname.path, default_statedir.path) == 0;
+	free_app_path(&default_statedir);
+	return ret;
 }
 
 /*
@@ -432,14 +449,14 @@ nsm_drop_privileges(const int pidfd)
 	 *      by configure.ac.  Nothing in nfs-utils seems to use
 	 *      "statduser," though.
 	 */
-	if (lstat(nsm_base_dirname, &st) == -1) {
+	if (lstat(nsm_base_dirname.path, &st) == -1) {
 		xlog(L_ERROR, "Failed to stat %s: %m", nsm_base_dirname);
 		return false;
 	}
 
-	if (chdir(nsm_base_dirname) == -1) {
+	if (chdir(nsm_base_dirname.path) == -1) {
 		xlog(L_ERROR, "Failed to change working directory to %s: %m",
-				nsm_base_dirname);
+				nsm_base_dirname.path);
 		return false;
 	}
 
@@ -448,7 +465,7 @@ nsm_drop_privileges(const int pidfd)
 
 	if (st.st_uid == 0) {
 		xlog_warn("Running as root.  "
-			"chown %s to choose different user", nsm_base_dirname);
+			"chown %s to choose different user", nsm_base_dirname.path);
 		return true;
 	}
 

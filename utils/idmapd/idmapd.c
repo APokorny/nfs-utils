@@ -69,6 +69,7 @@
 #include "conffile.h"
 #include "queue.h"
 #include "nfslib.h"
+#include "app_path.h"
 
 #ifndef PIPEFS_DIR
 #define PIPEFS_DIR  "/var/lib/nfs/rpc_pipefs/"
@@ -160,6 +161,8 @@ static void nfsdreopen(void);
 static int verbose = 0;
 #define DEFAULT_IDMAP_CACHE_EXPIRY 600 /* seconds */
 static int cache_entry_expiration = 0;
+static struct file_path pipefs_path;
+static struct file_path conf;
 static char pipefsdir[PATH_MAX];
 static char *nobodyuser, *nobodygroup;
 static uid_t nobodyuid;
@@ -220,10 +223,13 @@ main(int argc, char **argv)
 	int ret;
 	char *progname;
 
-	conf_path = _PATH_IDMAPDCONF;
+	conf = get_app_path(_PATH_IDMAPDCONF);
+	pipefs_path = get_app_path(PIPEFS_DIR);
+	conf_path = conf.path;
 	nobodyuser = NFS4NOBODY_USER;
 	nobodygroup = NFS4NOBODY_GROUP;
-	strlcpy(pipefsdir, PIPEFS_DIR, sizeof(pipefsdir));
+	strlcpy(pipefsdir, pipefs_path.path, sizeof(pipefsdir));
+	free_app_path(pipefs_path);
 
 	if ((progname = strrchr(argv[0], '/')))
 		progname++;
@@ -305,7 +311,7 @@ main(int argc, char **argv)
 	nfs4_set_debug(verbose, xlog_warn);
 #endif
 	if (conf_path == NULL)
-		conf_path = _PATH_IDMAPDCONF;
+		conf_path = conf.path;
 	if (nfs4_init_name_mapping(conf_path))
 		errx(1, "Unable to create name to user id mappings.");
 
@@ -391,6 +397,8 @@ main(int argc, char **argv)
 	if (event_dispatch() < 0)
 		xlog_err("main: event_dispatch returns errno %d (%s)",
 			    errno, strerror(errno));
+
+	free_app_path(conf);
 	/* NOTREACHED */
 	return 1;
 }

@@ -31,6 +31,7 @@
 #include "xlog.h"
 #include "xio.h"
 #include "pseudoflavors.h"
+#include "app_path.h"
 
 #define EXPORT_DEFAULT_FLAGS	\
   (NFSEXP_READONLY|NFSEXP_ROOTSQUASH|NFSEXP_GATHERED_WRITES|NFSEXP_NOSUBTREECHECK)
@@ -47,7 +48,7 @@ struct flav_info flav_map[] = {
 
 const int flav_map_size = sizeof(flav_map)/sizeof(flav_map[0]);
 
-static char	*efname = NULL;
+static struct file_path efname = {NULL, 0};
 static XFILE	*efp = NULL;
 static int	first;
 static int	has_default_opts, has_default_subtree_opts;
@@ -66,14 +67,17 @@ static struct flav_info *find_flavor(char *name);
 void
 setexportent(char *fname, char *type)
 {
+	struct file_path new_path = { fname, 0 };
 	if (efp)
 		endexportent();
 	if (!fname)
-		fname = _PATH_EXPORTS;
-	if (!(efp = xfopen(fname, type)))
+		new_path = get_app_path(_PATH_EXPORTS);
+	if (!(efp = xfopen(new_path.path, type))) {
 		xlog(L_ERROR, "can't open %s for %sing",
-				fname, strcmp(type, "r")? "writ" : "read");
-	efname = strdup(fname);
+				new_path.path, strcmp(type, "r")? "writ" : "read");
+		free_app_path(&new_path);
+	}
+	efname = new_path;
 	first = 1;
 }
 
@@ -329,9 +333,8 @@ endexportent(void)
 	if (efp)
 		xfclose(efp);
 	efp = NULL;
-	if (efname)
-		free(efname);
-	efname = NULL;
+	free_app_path(&efname);
+	efname.path = NULL;
 	freesquash();
 }
 
@@ -507,7 +510,7 @@ static int
 parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
 {
 	int	had_subtree_opt = 0;
-	char 	*flname = efname?efname:"command line";
+	char 	*flname = efname.path?efname.path:"command line";
 	int	flline = efp?efp->x_line:0;
 	unsigned int active = 0;
 
@@ -776,7 +779,7 @@ getexport(char *exp, int len)
 	xskip(efp, " \t");
 	if ((ok = xgettok(efp, 0, exp, len)) < 0)
 		xlog(L_ERROR, "%s:%d: syntax error",
-			efname?"command line":efname, efp->x_line);
+			efname.path?"command line":efname.path, efp->x_line);
 	return ok;
 }
 
@@ -784,7 +787,7 @@ static void
 syntaxerr(char *msg)
 {
 	xlog(L_ERROR, "%s:%d: syntax error: %s",
-			efname, efp?efp->x_line:0, msg);
+			efname.path, efp?efp->x_line:0, msg);
 }
 struct export_features *get_export_features(void)
 {

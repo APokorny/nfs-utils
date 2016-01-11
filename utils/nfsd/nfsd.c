@@ -27,6 +27,7 @@
 #include "nfslib.h"
 #include "nfssvc.h"
 #include "xlog.h"
+#include "app_path.h"
 
 #ifndef NFSD_NPROC
 #define NFSD_NPROC 8
@@ -66,6 +67,7 @@ main(int argc, char **argv)
 	unsigned int protobits = NFSCTL_ALLBITS;
 	int grace = -1;
 	int lease = -1;
+	struct file_path nfs_statedir = get_app_path(NFS_STATEDIR);
 
 	progname = strdup(basename(argv[0]));
 	if (!progname) {
@@ -249,10 +251,12 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (chdir(NFS_STATEDIR)) {
-		xlog(L_ERROR, "chdir(%s) failed: %m", NFS_STATEDIR);
+	if (chdir(nfs_statedir.path)) {
+		xlog(L_ERROR, "chdir(%s) failed: %m", nfs_statedir.path);
+		free_app_path(&nfs_statedir);
 		exit(1);
 	}
+	free_app_path(&nfs_statedir);
 
 	/* make sure nfsdfs is mounted if it's available */
 	nfssvc_mount_nfsdfs(progname);

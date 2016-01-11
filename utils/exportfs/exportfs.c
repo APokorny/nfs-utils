@@ -37,6 +37,7 @@
 #include "nfslib.h"
 #include "exportfs.h"
 #include "xlog.h"
+#include "app_path.h"
 
 static void	export_all(int verbose);
 static void	exportfs(char *arg, char *options, int verbose);
@@ -182,11 +183,17 @@ main(int argc, char **argv)
 	atexit(release_lockfile);
 
 	if (f_export && ! f_ignore) {
-		if (! (export_read(_PATH_EXPORTS) +
-		       export_d_read(_PATH_EXPORTS_D))) {
+		struct file_path exports_file = get_app_path(_PATH_EXPORTS);
+		struct file_path exports_d = get_app_path(_PATH_EXPORTS_D);
+
+		if (! (export_read(exports_file.path) +
+		       export_d_read(exports_d.path))) {
 			if (f_verbose)
 				xlog(L_WARNING, "No file systems exported!");
 		}
+
+		free_app_path(&exports_file);
+		free_app_path(&exports_d);
 	}
 	if (f_export) {
 		if (f_all)

@@ -22,6 +22,7 @@
 #include "xio.h"
 #include "mountd.h"
 #include "ha-callout.h"
+#include "app_path.h"
 
 #include <limits.h> /* PATH_MAX */
 #include <errno.h>
@@ -58,8 +59,12 @@ mountlist_add(char *host, const char *path)
 	struct rmtabent	*rep;
 	int		lockid;
 	long		pos;
+	struct file_path rmtablck;
 
-	if ((lockid = xflock(_PATH_RMTABLCK, "a")) < 0)
+	rmtablck = get_app_path(_PATH_RMTABLCK);
+	lockid = xflock(rmtablck.path, "a");
+	free_app_path(&rmtablck);
+	if (lockid < 0)
 		return;
 	setrmtabent("r+");
 	while ((rep = getrmtabent(1, &pos)) != NULL) {
@@ -98,14 +103,22 @@ mountlist_del(char *hname, const char *path)
 	FILE		*fp;
 	int		lockid;
 	int		match;
+	struct file_path rmtablck;
+	struct file_path rmtabtmp;
+	struct file_path rmtab;
 
-	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+	rmtablck = get_app_path(_PATH_RMTABLCK);
+	lockid = xflock(rmtablck.path, "a");
+	free_app_path(&rmtablck);
+	if (lockid < 0)
 		return;
 	if (!setrmtabent("r")) {
 		xfunlock(lockid);
 		return;
 	}
-	if (!(fp = fsetrmtabent(_PATH_RMTABTMP, "w"))) {
+	rmtablktmp = get_app_path(_PATH_RMTABTMP);
+	if (!fp = fsetrmtabent(rmtabtmp.path, "w")) {
+		free_app_path(&rmtabtmp);
 		endrmtabent();
 		xfunlock(lockid);
 		return;
@@ -121,13 +134,16 @@ mountlist_del(char *hname, const char *path)
 		if (!match || rep->r_count)
 			fputrmtabent(fp, rep, NULL);
 	}
-	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+	rmtab = get_app_path(_PATH_RMTAB);
+	if (slink_safe_rename(rmtabtmp.path, rmtab.path) < 0) {
 		xlog(L_ERROR, "couldn't rename %s to %s",
-				_PATH_RMTABTMP, _PATH_RMTAB);
+				rmtabtmp.path, rmtab.path);
 	}
 	endrmtabent();	/* close & unlink */
 	fendrmtabent(fp);
 	xfunlock(lockid);
+	free_app_path(&rmtab);
+	free_app_path(&rmtabtmp);
 }
 
 void
@@ -137,8 +153,14 @@ mountlist_del_all(const struct sockaddr *sap)
 	struct rmtabent	*rep;
 	FILE		*fp;
 	int		lockid;
+	struct file_path rmtablck;
+	struct file_path rmtabtmp;
+	struct file_path rmtab;
 
-	if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+	rmtablck = get_app_path(_PATH_RMTABLCK);
+	lockid = xflock(rmtablck.path, "w");
+	free_app_path(&rmtablck);
+	if (lockid < 0)
 		return;
 	hostname = host_canonname(sap);
 	if (hostname == NULL) {
@@ -151,7 +173,9 @@ mountlist_del_all(const struct sockaddr *sap)
 	if (!setrmtabent("r"))
 		goto out_free;
 
-	if (!(fp = fsetrmtabent(_PATH_RMTABTMP, "w")))
+	rmtabtmp = get_app_path(_PATH_RMTABTMP);
+	fp = fsetrmtabent(rmtabtmp.path, "w");
+	if (!fp)
 		goto out_close;
 
 	while ((rep = getrmtabent(1, NULL)) != NULL) {
@@ -160,12 +184,15 @@ mountlist_del_all(const struct sockaddr *sap)
 			continue;
 		fputrmtabent(fp, rep, NULL);
 	}
-	if (slink_safe_rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+	rmtab = get_app_path(_PATH_RMTAB);
+	if (slink_safe_rename(rmtabtmp.path, rmtab.path) < 0) {
 		xlog(L_ERROR, "couldn't rename %s to %s",
-				_PATH_RMTABTMP, _PATH_RMTAB);
+				rmtabtmp.path, rmtab.path);
 	}
 	fendrmtabent(fp);
+	free_app_path(rmtab);
 out_close:
+	free_app_path(rmtabtmp);
 	endrmtabent();	/* close & unlink */
 out_free:
 	free(hostname);
@@ -194,15 +221,23 @@ mountlist_list(void)
 	struct rmtabent		*rep;
 	struct stat		stb;
 	int			lockid;
+	struct file_path	rmtablck;
+	struct file_path	rmtab;
 
-	if ((lockid = xflock(_PATH_RMTABLCK, "r")) < 0)
+	rmtablck = get_app_path(_PATH_RMTABLCK);
+	lockid = xflock(rmtablck.path, "r");
+	free_app_path(rmtablck);;
+	if (lockid < 0)
 		return NULL;
-	if (stat(_PATH_RMTAB, &stb) < 0) {
+	rmtab = get_app_path(_PATH_RMTAB);
+	if (stat(rmtab.path, &stb) < 0) {
 		xlog(L_ERROR, "can't stat %s: %s",
-				_PATH_RMTAB, strerror(errno));
+				rmtab.path, strerror(errno));
 		xfunlock(lockid);
+		free_app_path(&rmtab);
 		return NULL;
 	}
+	free_app_path(&rmtab);
 	if (stb.st_mtime != last_mtime) {
 		mountlist_freeall(mlist);
 		mlist = NULL;

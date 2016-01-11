@@ -89,7 +89,7 @@ static struct cltrack_cmd commands[] =
 	{ NULL, false, NULL },
 };
 
-static char *storagedir = CLD_DEFAULT_STORAGEDIR;
+static char *storagedir = NULL;
 
 /* common buffer for holding id4 blobs */
 static unsigned char blob[NFS4_OPAQUE_LIMIT];
@@ -556,6 +556,8 @@ main(int argc, char **argv)
 	int rc = 0;
 	char *progname, *cmdarg = NULL;
 	struct cltrack_cmd *cmd;
+	struct file_path storage = get_app_path(CLD_DEFAULT_STORAGEDIR);
+	storagedir = storage.path;
 
 	progname = basename(argv[0]);
 
@@ -619,5 +621,6 @@ main(int argc, char **argv)
 	}
 	rc = cmd->func(cmdarg);
 out:
+	free_app_path(&storage);
 	return rc;
 }

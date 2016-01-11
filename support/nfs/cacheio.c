@@ -27,6 +27,8 @@
 #include <time.h>
 #include <errno.h>
 
+#include "app_path.h"
+
 void qword_add(char **bpp, int *lp, char *str)
 {
 	char *bp = *bpp;
@@ -239,11 +241,16 @@ cache_flush(int force)
 		NULL
 	};
 	now = time(0);
-	if (force ||
-	    stat(_PATH_ETAB, &stb) != 0 ||
-	    stb.st_mtime > now)
+	if (force)
 		stb.st_mtime = time(0);
-	
+        else {
+		struct file_path etab_path = get_app_path(_PATH_ETAB);
+		if (stat(etab_path.path, &stb) != 0 ||
+		    stb.st_mtime > now)
+			stb.st_mtime = time(0);
+		free_app_path(&etab_path);
+	}
+
 	sprintf(stime, "%ld\n", stb.st_mtime);
 	for (c=0; cachelist[c]; c++) {
 		int fd;

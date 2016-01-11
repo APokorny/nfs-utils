@@ -47,6 +47,7 @@
 
 #include "sockaddr.h"
 #include "nfsrpc.h"
+#include "app_path.h"
 
 /*
  * Try a local socket first to access the local rpcbind daemon
@@ -917,9 +918,10 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
 	unsigned short port = 0;
 
 #ifdef NFS_GP_LOCAL
+	struct file_path rpc_bind_sock = get_app_path(_PATH_RPCBINDSOCK);
 	const struct sockaddr_un sun = {
 		.sun_family	= AF_LOCAL,
-		.sun_path	= _PATH_RPCBINDSOCK,
+		.sun_path	= rpc_bind_sock.path
 	};
 	const struct sockaddr *sap = (struct sockaddr *)&sun;
 	const socklen_t salen = SUN_LEN(&sun);
@@ -939,6 +941,7 @@ unsigned short nfs_getlocalport(const rpcprot_t program,
 		}
 		CLNT_DESTROY(client);
 	}
+	free_app_path(&rpc_bind_sock);
 #endif	/* NFS_GP_LOCAL */
 
 	if (port == 0) {

@@ -20,6 +20,7 @@
 #include "xio.h"
 #include "xlog.h"
 #include "v4root.h"
+#include "app_path.h"
 
 int v4root_needed;
 static void cond_rename(char *newfile, char *oldfile);
@@ -78,14 +79,25 @@ xtab_mount_read(void)
 		close(fd);
 		return xtab_read(_PATH_PROC_EXPORTS_ALT,
 				 _PATH_PROC_EXPORTS_ALT, 0);
-	} else
-		return xtab_read(_PATH_XTAB, _PATH_XTABLCK, 2);
+	} else {
+		struct file_path xtab_path = get_app_path(_PATH_XTAB);
+		struct file_path xtab_lock_path = get_app_path(_PATH_XTABLCK);
+		int ret = xtab_read(xtab_path.path, xtab_lock_path.path, 2);
+		free_app_path(&xtab_path);
+		free_app_path(&xtab_lock_path);
+		return ret;
+	}
 }
 
 int
 xtab_export_read(void)
 {
-	return xtab_read(_PATH_ETAB, _PATH_ETABLCK, 1);
+	struct file_path etab_path = get_app_path(_PATH_ETAB);
+	struct file_path etab_lock_path = get_app_path(_PATH_ETABLCK);
+	int ret = xtab_read(etab_path.path, etab_lock_path.path, 1);
+	free_app_path(&etab_path);
+	free_app_path(&etab_lock_path);
+	return ret;
 }
 
 /*
@@ -132,13 +144,27 @@ xtab_write(char *xtab, char *xtabtmp, char *lockfn, int is_export)
 int
 xtab_export_write()
 {
-	return xtab_write(_PATH_ETAB, _PATH_ETABTMP, _PATH_ETABLCK, 1);
+	struct file_path etab_path = get_app_path(_PATH_ETAB);
+	struct file_path etab_tmp_path = get_app_path(_PATH_ETABTMP);
+	struct file_path etab_lock_path = get_app_path(_PATH_ETABLCK);
+	int ret = xtab_write(etab_path.path, etab_tmp_path.path, etab_lock_path.path, 1);
+	free_app_path(&etab_path);
+	free_app_path(&etab_tmp_path);
+	free_app_path(&etab_lock_path);
+	return ret;
 }
 
 int
 xtab_mount_write()
 {
-	return xtab_write(_PATH_XTAB, _PATH_XTABTMP, _PATH_XTABLCK, 0);
+	struct file_path xtab_path = get_app_path(_PATH_XTAB);
+	struct file_path xtab_tmp_path = get_app_path(_PATH_XTABTMP);
+	struct file_path xtab_lock_path = get_app_path(_PATH_XTABLCK);
+	int ret = xtab_write(_PATH_XTAB, _PATH_XTABTMP, _PATH_XTABLCK, 0);
+	free_app_path(&xtab_path);
+	free_app_path(&xtab_tmp_path);
+	free_app_path(&xtab_lock_path);
+	return ret;
 }
 
 void
@@ -146,10 +172,16 @@ xtab_append(nfs_export *exp)
 {
 	struct exportent xe;
 	int		lockid;
+	struct file_path xtab_lock_path = get_app_path(_PATH_XTABLCK);
+	struct file_path xtab_path;
 
-	if ((lockid = xflock(_PATH_XTABLCK, "w")) < 0)
+	lockid = xflock(xtab_lock_path.path, "w");
+	free_app_path(&xtab_lock_path);
+	if (lockid < 0)
 		return;
-	setexportent(_PATH_XTAB, "a");
+	xtab_path = get_app_path(_PATH_XTAB);
+	setexportent(xtab_path.path, "a");
+	free_app_path(&xtab_path);
 	xe = exp->m_export;
 	xe.e_hostname = exp->m_client->m_hostname;
 	putexportent(&xe);

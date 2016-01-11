@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <signal.h>
 #include "nfslib.h"
+#include "app_path.h"
 
 /*
  * Colons in incoming IPv6 presentation addresses have to
@@ -36,9 +37,11 @@ static FILE	*rmfp = NULL;
 int
 setrmtabent(char *type)
 {
+	struct file_path rmtab_path = get_app_path(_PATH_RMTAB);
 	if (rmfp)
 		fclose(rmfp);
-	rmfp = fsetrmtabent(_PATH_RMTAB, type);
+	rmfp = fsetrmtabent(rmtab_path.path, type);
+	free_app_path(&rmtab_path);
 	return (rmfp != NULL);
 }
 

@@ -18,6 +18,7 @@
 #include "exportfs.h"
 #include "xio.h"
 #include "xlog.h"
+#include "app_path.h"
 
 /*
  * See if the entry already exists.  If not,
@@ -72,10 +73,20 @@ rmtab_read(void)
 		   file. */
 		int	lockid;
 		FILE	*fp;
-		if ((lockid = xflock(_PATH_RMTABLCK, "w")) < 0)
+		struct file_path rmtab_lock = get_app_path(_PATH_RMTABLCK);
+		struct file_path rmtab_tmp = get_app_path(_PATH_RMTABTMP);
+		struct file_path rmtab = get_app_path(_PATH_RMTAB);
+		if ((lockid = xflock(rmtab_lock.path, "w")) < 0) {
+			free_app_path(&rmtab_lock);
+			free_app_path(&rmtab_tmp);
+			free_app_path(&rmtab);
 			return -1;
+		}
 		rewindrmtabent();
-		if (!(fp = fsetrmtabent(_PATH_RMTABTMP, "w"))) {
+		if (!(fp = fsetrmtabent(rmtab_tmp.path, "w"))) {
+			free_app_path(&rmtab_lock);
+			free_app_path(&rmtab_tmp);
+			free_app_path(&rmtab);
 			endrmtabent ();
 			xfunlock(lockid);
 			return -1;
@@ -83,13 +94,17 @@ rmtab_read(void)
 		while ((rep = getrmtabent(0, NULL)) != NULL) {
 			fputrmtabent(fp, rep, NULL);
 		}
-		if (rename(_PATH_RMTABTMP, _PATH_RMTAB) < 0) {
+		if (rename(rmtab_tmp.path, rmtab.path) < 0) {
 			xlog(L_ERROR, "couldn't rename %s to %s",
-			     _PATH_RMTABTMP, _PATH_RMTAB);
+			     rmtab_tmp.path, rmtab.path);
 		}
 		endrmtabent();
 		fendrmtabent(fp);
 		xfunlock(lockid);
+
+		free_app_path(&rmtab_lock);
+		free_app_path(&rmtab_tmp);
+		free_app_path(&rmtab);
 	}
 	else {
 		endrmtabent();
