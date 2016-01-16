@@ -116,8 +116,8 @@ mountlist_del(char *hname, const char *path)
 		xfunlock(lockid);
 		return;
 	}
-	rmtablktmp = get_app_path(_PATH_RMTABTMP);
-	if (!fp = fsetrmtabent(rmtabtmp.path, "w")) {
+	rmtabtmp = get_app_path(_PATH_RMTABTMP);
+	if (!(fp = fsetrmtabent(rmtabtmp.path, "w"))) {
 		free_app_path(&rmtabtmp);
 		endrmtabent();
 		xfunlock(lockid);
@@ -190,9 +190,9 @@ mountlist_del_all(const struct sockaddr *sap)
 				rmtabtmp.path, rmtab.path);
 	}
 	fendrmtabent(fp);
-	free_app_path(rmtab);
+	free_app_path(&rmtab);
 out_close:
-	free_app_path(rmtabtmp);
+	free_app_path(&rmtabtmp);
 	endrmtabent();	/* close & unlink */
 out_free:
 	free(hostname);
@@ -226,7 +226,7 @@ mountlist_list(void)
 
 	rmtablck = get_app_path(_PATH_RMTABLCK);
 	lockid = xflock(rmtablck.path, "r");
-	free_app_path(rmtablck);;
+	free_app_path(&rmtablck);;
 	if (lockid < 0)
 		return NULL;
 	rmtab = get_app_path(_PATH_RMTAB);

@@ -115,9 +115,9 @@ cleanup_lockfiles (void)
 	unlink(xtablck.path);
 	unlink(etablck.path);
 	unlink(rmtablck.path);
-	free_app_path(xtablck);
-	free_app_path(etablck);
-	free_app_path(rmtablck);
+	free_app_path(&xtablck);
+	free_app_path(&etablck);
+	free_app_path(&rmtablck);
 }
 
 /* Wait for all worker child processes to exit and reap them */

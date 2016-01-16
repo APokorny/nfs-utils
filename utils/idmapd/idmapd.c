@@ -229,7 +229,7 @@ main(int argc, char **argv)
 	nobodyuser = NFS4NOBODY_USER;
 	nobodygroup = NFS4NOBODY_GROUP;
 	strlcpy(pipefsdir, pipefs_path.path, sizeof(pipefsdir));
-	free_app_path(pipefs_path);
+	free_app_path(&pipefs_path);
 
 	if ((progname = strrchr(argv[0], '/')))
 		progname++;
@@ -398,7 +398,7 @@ main(int argc, char **argv)
 		xlog_err("main: event_dispatch returns errno %d (%s)",
 			    errno, strerror(errno));
 
-	free_app_path(conf);
+	free_app_path(&conf);
 	/* NOTREACHED */
 	return 1;
 }
