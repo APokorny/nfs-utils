@@ -45,6 +45,7 @@
 
 #include "xlog.h"
 #include "sqlite.h"
+#include "app_path.h"
 
 #ifndef CLD_DEFAULT_STORAGEDIR
 #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
