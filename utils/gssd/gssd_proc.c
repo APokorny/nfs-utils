@@ -69,6 +69,8 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <krb5.h>
+#include <rpc/auth_gss.h>
 
 #include "gssd.h"
 #include "err_util.h"

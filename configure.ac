@@ -233,7 +233,9 @@ AC_ARG_ENABLE(osdlogin,
 	AM_CONDITIONAL(CONFIG_OSD_LOGIN, [test "$enable_osdlogin" = "yes" ])
 
 dnl Check for TI-RPC library and headers
-AC_LIBTIRPC
+PKG_CHECK_MODULES([LIBTIRPC], [libtirpc], [AC_DEFINE(HAVE_LIBTIRPC,[1],[Have libtirpc])]) 
+
+PKG_PROG_PKG_CONFIG
 
 dnl Check for -lcap
 AC_LIBCAP
@@ -380,25 +382,30 @@ if test "$enable_gss" = yes; then
   AC_LIBNFSIDMAP
 
   dnl Check for Kerberos V5
-  AC_KERBEROS_V5
+  PKG_CHECK_MODULES([KRB], [krb5 krb5-gssapi],
+	[AC_DEFINE(HAVE_KRB5,[1],[Have kerberos v5])
+	 AC_DEFINE(KRB5_VERSION,[132],[kerberos v5 version])
+	 dnl AC_DEFINE(HAVE_HEIMDAL,[0], [Define this if you have Heimdal Kerberos libraries])
+	 AC_CHECK_LIB(gssapi_krb, gss_krb5_export_lucid_sec_context,
+	    AC_DEFINE(HAVE_LUCID_CONTEXT_SUPPORT, 1, [Define this if the Kerberos GSS library supports gss_krb5_export_lucid_sec_context]), ,$KRB_LIBS)
+	 AC_CHECK_LIB(gssapi_krb, gss_krb5_set_allowable_enctypes,
+	    AC_DEFINE(HAVE_SET_ALLOWABLE_ENCTYPES, 1, [Define this if the Kerberos GSS library supports gss_krb5_set_allowable_enctypes]), ,$KRB_LIBS)
+	 AC_CHECK_LIB(gssapi_krb, gss_krb5_ccache_name,
+	    AC_DEFINE(HAVE_GSS_KRB5_CCACHE_NAME, 1, [Define this if the Kerberos GSS library supports gss_krb5_ccache_name]), ,$KRB_LIBS)
+	 AC_CHECK_LIB(gssapi_krb, gss_krb5_free_lucid_sec_context,
+	    AC_DEFINE(HAVE_GSS_KRB5_FREE_LUCID_SEC_CONTEXT, 1, [Define this if the Kerberos GSS library supports gss_krb5_free_lucid_sec_context]), ,$KRB_LIBS)
+	dnl Check for newer error message facility
+	  AC_CHECK_LIB($gssapi_lib, krb5_get_error_message,
+	    AC_DEFINE(HAVE_KRB5_GET_ERROR_MESSAGE, 1, [Define this if the function krb5_get_error_message is available]), ,$KRBLIBS)
+
+	  dnl Check for function to specify addressless tickets
+	  AC_CHECK_LIB($gssapi_lib, krb5_get_init_creds_opt_set_addressless,
+	    AC_DEFINE(HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS, 1, [Define this if the function krb5_get_init_creds_opt_set_addressless is available]), ,$KRBLIBS)
+	])
+  PKG_CHECK_MODULES([GSSAPI], [gss])
 
   dnl Invoked after AC_KERBEROS_V5; AC_LIBRPCSECGSS needs to have KRBLIBS set
-  AC_LIBRPCSECGSS
-
-  dnl librpcsecgss already has a dependency on libgssapi,
-  dnl but we need to make sure we get the right version
-  if test "$enable_gss" = yes; then
-    AC_RPCSEC_VERSION
-    if test x"$GSSGLUE_LIBS" != x""; then
-      GSSAPI_CFLAGS=$GSSGLUE_CFLAGS
-      GSSAPI_LIBS=$GSSGLUE_LIBS
-    else
-      GSSAPI_CFLAGS=$GSSKRB_CFLAGS
-      GSSAPI_LIBS=$GSSKRB_LIBS
-    fi
-    AC_SUBST([GSSAPI_CFLAGS])
-    AC_SUBST([GSSAPI_LIBS])
-  fi
+  PKG_CHECK_MODULES([LIBRPCSECGSS], [gssrpc])
 fi
 
 dnl Check for IPv6 support

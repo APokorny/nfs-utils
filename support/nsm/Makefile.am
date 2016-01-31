@@ -11,6 +11,7 @@ EXTRA_DIST	= sm_inter.x
 
 noinst_LIBRARIES = libnsm.a
 libnsm_a_SOURCES = $(GENFILES) file.c rpc.c
+libnsm_a_CPPFLAGS = $(LIBTIRPC_CFLAGS) $(AM_CPPFLAGS)
 
 BUILT_SOURCES = $(GENFILES)
 

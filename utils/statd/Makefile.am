@@ -15,10 +15,12 @@ BUILT_SOURCES = $(GENFILES)
 statd_LDADD = ../../support/nsm/libnsm.a \
 	      ../../support/nfs/libnfs.a \
 	      ../../support/misc/libmisc.a \
-	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) \
+	      $(LIBTIRPC_LDFLAGS) $(LIBTIRPC_LIBS)
 sm_notify_LDADD = ../../support/nsm/libnsm.a \
 		  ../../support/nfs/libnfs.a \
-		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
+		  $(LIBNSL) $(LIBCAP) \
+	          $(LIBTIRPC_LDFLAGS) $(LIBTIRPC_LIBS)
 
 EXTRA_DIST = sim_sm_inter.x $(man8_MANS) simulate.c
 

@@ -47,19 +47,21 @@ gssd_LDADD = \
 	../../support/nfs/libnfs.a \
 	$(LIBEVENT) \
 	$(RPCSECGSS_LIBS) \
-	$(KRBLIBS) \
+	$(KRB_LIBS) \
 	$(GSSAPI_LIBS) \
-	$(LIBTIRPC)
+	$(LIBTIRPC_LIBS)
 
 gssd_LDFLAGS = \
-	$(KRBLDFLAGS)
+	$(LIBTIRPC_LDFLAGS) \
+	$(KRB_LDFLAGS)
 
 gssd_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CFLAGS) \
 	$(RPCSECGSS_CFLAGS) \
-	$(KRBCFLAGS) \
-	$(GSSAPI_CFLAGS)
+	$(KRB_CFLAGS) \
+	$(GSSAPI_CFLAGS) \
+	$(LIBTIRPC_CFLAGS)
 
 svcgssd_SOURCES = \
 	$(COMMON_SRCS) \
@@ -75,12 +77,12 @@ svcgssd_SOURCES = \
 svcgssd_LDADD = \
 	../../support/nfs/libnfs.a \
 	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
-	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
+	$(KRB_LIBS) $(GSSAPI_LIBS) $(LIBTIRPC_LDFLAGS)
 
-svcgssd_LDFLAGS = $(KRBLDFLAGS)
+svcgssd_LDFLAGS = $(KRB_LDFLAGS)
 
 svcgssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
-		 $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+		 $(RPCSECGSS_CFLAGS) $(KRB_CFLAGS) $(GSSAPI_CFLAGS)
 
 MAINTAINERCLEANFILES = Makefile.in
 

@@ -25,9 +25,11 @@ else
 EXTRA_DIST += nfsmount.conf.man
 endif
 
+mount_nfs_LDFLAGS= $(LIBTIRPC_LDFLAGS)
 mount_nfs_LDADD = ../../support/nfs/libnfs.a \
 		  ../../support/export/libexport.a \
-		  $(LIBTIRPC)
+		  $(LIBTIRPC_LIBS)
+		  
 
 mount_nfs_SOURCES = $(mount_common)
 

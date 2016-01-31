@@ -9,7 +9,8 @@ sbin_PROGRAMS	= nfsd
 
 noinst_HEADERS = nfssvc.h
 nfsd_SOURCES = nfsd.c nfssvc.c
-nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC)
+nfsd_LDFLAGS= $(LIBTIRPC_LDFLAGS)
+nfsd_LDADD = ../../support/nfs/libnfs.a $(LIBTIRPC_LIBS)
 
 MAINTAINERCLEANFILES = Makefile.in
 
